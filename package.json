@@ -1,7 +1,7 @@
 {
   "name": "word-tiles-solver",
   "version": "1.0.0",
-  "description": "Trie based word solver for tile games: rack search with blank tiles, exact anagrams, pattern matching and tile scores. No dependencies.Will be adapted to wordscapes",
+  "description": "Trie based word solver for tile games: rack search with blank tiles, exact anagrams, pattern matching and tile scores. No dependencies.",
   "main": "index.js",
   "files": [
     "index.js",
@@ -25,7 +25,6 @@
   ],
   "author": "Pop",
   "license": "MIT",
-  "homepage": "https://www.solvingwordscapes.com/",
   "bugs": {
     "url": "https://github.com/PopKornmm/word-tiles-solver/issues"
   }

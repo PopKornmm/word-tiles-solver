@@ -5,9 +5,8 @@ word you can build, with support for blank tiles, exact anagrams, pattern
 search and standard tile scoring. Trie based, no dependencies, ships with the
 public domain ENABLE word list (172k words).
 
-I wrote this while building player tools for
-[Solving Wordscapes](https://www.solvingwordscapes.com/). The rack-in,
-words-out part was generic enough to publish on its own.
+I wrote this while building player tools for a Wordscapes answers site I
+run. The rack-in, words-out part was generic enough to publish on its own.
 
 ## Install
 
