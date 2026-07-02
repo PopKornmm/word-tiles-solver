@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>word-tiles-solver demo</title>
+<style>
+  :root{
+    --bg:#f6f4ee; --card:#fffdf7; --ink:#2a2620; --mut:#7a7264;
+    --line:#e4ddcd; --tile:#f3b64c; --tile-ink:#4a3413; --acc:#3d6b4f;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; font:16px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif;
+    background:var(--bg); color:var(--ink);
+    display:flex; flex-direction:column; min-height:100vh;
+  }
+  header{
+    padding:26px 20px 6px; text-align:center;
+  }
+  header h1{ margin:0; font-size:26px; letter-spacing:-.01em; }
+  header p{ margin:6px 0 0; color:var(--mut); font-size:14px; }
+  header a{ color:var(--acc); }
+  main{ flex:1; width:100%; max-width:760px; margin:0 auto; padding:18px 20px 30px; }
+
+  .tabs{ display:flex; gap:8px; margin:0 0 14px; }
+  .tab{
+    cursor:pointer; border:1px solid var(--line); background:var(--card);
+    color:var(--mut); font-weight:700; font-size:14px; padding:8px 15px;
+    border-radius:999px;
+  }
+  .tab.on{ background:var(--acc); border-color:var(--acc); color:#fff; }
+
+  .panel{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:16px; box-shadow:0 1px 3px rgba(0,0,0,.04);
+  }
+  .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  input[type=text]{
+    flex:1; min-width:180px; font-size:20px; letter-spacing:.12em;
+    padding:10px 14px; border:1px solid var(--line); border-radius:10px;
+    background:#fff; text-transform:lowercase;
+  }
+  select{
+    font-size:14px; padding:9px 10px; border:1px solid var(--line);
+    border-radius:10px; background:#fff; color:var(--ink);
+  }
+  .hint{ margin:9px 2px 0; font-size:13px; color:var(--mut); }
+  .count{ margin:16px 2px 8px; font-size:13px; font-weight:700; color:var(--mut); }
+
+  .words{ display:flex; flex-wrap:wrap; gap:8px; }
+  .w{
+    display:inline-flex; align-items:center; gap:6px;
+    background:var(--tile); color:var(--tile-ink);
+    border-radius:8px; padding:7px 10px; font-weight:800; font-size:16px;
+    letter-spacing:.06em; text-transform:uppercase;
+    box-shadow:inset 0 -2px 0 rgba(0,0,0,.15);
+  }
+  .w small{ font-weight:700; font-size:11px; opacity:.75; }
+  .empty{ color:var(--mut); font-size:14px; margin:8px 2px; }
+
+  .cta{
+    margin:26px 0 0; padding:16px; border:1px dashed var(--line);
+    border-radius:12px; font-size:14.5px; color:var(--ink); background:#fbf8f0;
+  }
+  .cta a{ color:var(--acc); font-weight:700; }
+
+  footer{
+    padding:16px 20px 26px; text-align:center; font-size:13px; color:var(--mut);
+  }
+  footer a{ color:var(--acc); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>word-tiles-solver</h1>
+  <p>
+    Trie word solver for tile games.
+    <a id="repo-link" href="#">GitHub</a> ·
+    built for <a href="https://www.solvingwordscapes.com/" rel="noopener">solvingwordscapes.com</a>
+  </p>
+</header>
+
+<main>
+  <div class="tabs">
+    <button class="tab on" data-mode="rack">Rack</button>
+    <button class="tab" data-mode="anagram">Anagrams</button>
+    <button class="tab" data-mode="pattern">Pattern</button>
+  </div>
+
+  <div class="panel">
+    <div class="row">
+      <input id="entry" type="text" autocomplete="off" spellcheck="false"
+             placeholder="letters, ? for blank" value="aetrs">
+      <select id="minlen">
+        <option value="2">2+ letters</option>
+        <option value="3" selected>3+ letters</option>
+        <option value="4">4+ letters</option>
+        <option value="5">5+ letters</option>
+      </select>
+      <select id="sort">
+        <option value="score" selected>by score</option>
+        <option value="len">by length</option>
+        <option value="alpha">a to z</option>
+      </select>
+    </div>
+    <p class="hint" id="hint">Loading the word list...</p>
+    <p class="count" id="count"></p>
+    <div class="words" id="output"></div>
+  </div>
+
+  <div class="cta">
+    Playing Wordscapes? Daily puzzle answers, level search and player tools
+    live at <a href="https://www.solvingwordscapes.com/" rel="noopener">Solving Wordscapes</a>.
+  </div>
+</main>
+
+<footer>
+  MIT licensed. Word list: ENABLE (public domain).
+  A <a href="https://www.solvingwordscapes.com/" rel="noopener">solvingwordscapes.com</a> side project.
+</footer>
+
+<script>
+'use strict';
+// Standalone copy of the solver so the demo has zero build step.
+const SCORES = {a:1,b:3,c:3,d:2,e:1,f:4,g:2,h:4,i:1,j:8,k:5,l:1,m:3,n:1,o:1,
+  p:3,q:10,r:1,s:1,t:1,u:1,v:4,w:4,x:8,y:4,z:10};
+function scoreWord(w){ let s=0; for (const ch of w) s += SCORES[ch]||0; return s; }
+
+class WordSolver {
+  constructor(words){
+    this.root = { kids:Object.create(null), word:null };
+    this.byKey = new Map();
+    this.byLen = new Map();
+    for (const w of words){
+      if (!/^[a-z]+$/.test(w) || w.length < 2) continue;
+      let n = this.root;
+      for (const ch of w) n = n.kids[ch] || (n.kids[ch] = { kids:Object.create(null), word:null });
+      n.word = w;
+      const key = w.split('').sort().join('');
+      const b = this.byKey.get(key); if (b) b.push(w); else this.byKey.set(key,[w]);
+      const lb = this.byLen.get(w.length); if (lb) lb.push(w); else this.byLen.set(w.length,[w]);
+    }
+  }
+  fromRack(rack, opts){
+    const minLength = (opts && opts.minLength) || 2;
+    const counts = Object.create(null); let blanks = 0;
+    for (const ch of String(rack).toLowerCase()){
+      if (ch === '?') blanks++;
+      else if (ch >= 'a' && ch <= 'z') counts[ch] = (counts[ch]||0)+1;
+    }
+    const best = new Map();
+    const walk = (node, score, bl) => {
+      if (node.word && node.word.length >= minLength){
+        const p = best.get(node.word);
+        if (p === undefined || score > p) best.set(node.word, score);
+      }
+      for (const ch in node.kids){
+        if (counts[ch] > 0){ counts[ch]--; walk(node.kids[ch], score+SCORES[ch], bl); counts[ch]++; }
+        if (bl > 0) walk(node.kids[ch], score, bl-1);
+      }
+    };
+    walk(this.root, 0, blanks);
+    const out = [];
+    for (const [word, score] of best) out.push({word, score});
+    out.sort((a,b) => (b.score-a.score) || (a.word < b.word ? -1 : 1));
+    return out;
+  }
+  anagrams(letters){
+    const clean = String(letters).toLowerCase().replace(/[^a-z]/g,'');
+    if (!clean) return [];
+    const hits = this.byKey.get(clean.split('').sort().join('')) || [];
+    return hits.filter(w => w !== clean);
+  }
+  pattern(pat){
+    const p = String(pat).toLowerCase();
+    if (!/^[a-z?]+$/.test(p)) return [];
+    const bucket = this.byLen.get(p.length) || [];
+    const out = [];
+    for (const w of bucket){
+      let ok = true;
+      for (let i=0;i<p.length;i++){ if (p[i] !== '?' && p[i] !== w[i]){ ok=false; break; } }
+      if (ok) out.push(w);
+    }
+    return out;
+  }
+}
+
+const $ = id => document.getElementById(id);
+let solver = null;
+let mode = 'rack';
+
+const COPY = {
+  rack:    { ph:'letters, ? for blank', hint:'Every word buildable from your rack. Use ? for a blank tile (blanks score 0).' },
+  anagram: { ph:'a full word or letters', hint:'Exact rearrangements only: same letters, same counts.' },
+  pattern: { ph:'pattern like c??e',      hint:'Fixed length, ? matches any letter.' }
+};
+
+function render(items){
+  const out = $('output');
+  if (!items.length){
+    out.innerHTML = '<p class="empty">Nothing found.</p>';
+    $('count').textContent = '';
+    return;
+  }
+  $('count').textContent = items.length + (items.length === 1 ? ' word' : ' words');
+  const cap = items.slice(0, 400);
+  out.innerHTML = cap.map(it =>
+    '<span class="w">' + it.word + ' <small>' + it.score + '</small></span>'
+  ).join('');
+  if (items.length > cap.length){
+    out.innerHTML += '<p class="empty">Showing the first 400.</p>';
+  }
+}
+
+function solve(){
+  if (!solver) return;
+  const q = $('entry').value.trim();
+  if (!q){ render([]); return; }
+  const minLength = parseInt($('minlen').value, 10);
+  let items = [];
+  if (mode === 'rack'){
+    items = solver.fromRack(q, { minLength });
+  } else if (mode === 'anagram'){
+    items = solver.anagrams(q).map(w => ({ word:w, score:scoreWord(w) }));
+  } else {
+    items = solver.pattern(q).filter(w => w.length >= minLength)
+                  .map(w => ({ word:w, score:scoreWord(w) }));
+  }
+  const s = $('sort').value;
+  if (s === 'len') items.sort((a,b) => (b.word.length - a.word.length) || (a.word < b.word ? -1 : 1));
+  if (s === 'alpha') items.sort((a,b) => a.word < b.word ? -1 : 1);
+  render(items);
+}
+
+function setMode(m){
+  mode = m;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.mode === m));
+  $('entry').placeholder = COPY[m].ph;
+  $('hint').textContent = COPY[m].hint;
+  $('minlen').style.display = (m === 'anagram') ? 'none' : '';
+  solve();
+}
+
+document.querySelectorAll('.tab').forEach(t =>
+  t.addEventListener('click', () => setMode(t.dataset.mode)));
+['entry','sort','minlen'].forEach(id => $(id).addEventListener('input', solve));
+
+// Point the GitHub link at this repo when served from Pages.
+(function(){
+  const link = $('repo-link');
+  const host = location.hostname;
+  if (host.endsWith('github.io')){
+    const user = host.split('.')[0];
+    const repo = location.pathname.split('/').filter(Boolean)[0] || 'word-tiles-solver';
+    link.href = 'https://github.com/' + user + '/' + repo;
+  } else {
+    link.href = 'https://github.com/';
+  }
+})();
+
+(async function init(){
+  try {
+    const res = await fetch('../words.txt');
+    if (!res.ok) throw new Error('Could not load the word list (' + res.status + ').');
+    const text = await res.text();
+    solver = new WordSolver(text.split('\n').map(w => w.trim()).filter(Boolean));
+    $('hint').textContent = COPY[mode].hint;
+    solve();
+  } catch (e){
+    $('output').innerHTML = '<p class="empty">' + e.message + '</p>';
+    $('hint').textContent = 'The demo needs words.txt one folder up (works on GitHub Pages out of the box).';
+  }
+})();
+</script>
+</body>
+</html>
