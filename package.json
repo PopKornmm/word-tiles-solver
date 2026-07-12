@@ -1,7 +1,8 @@
 {
   "name": "word-tiles-solver",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Trie based word solver for tile games: rack search with blank tiles, exact anagrams, pattern matching and tile scores. No dependencies.",
+  "homepage": "https://www.solvingwordscapes.com/",
   "main": "index.js",
   "files": [
     "index.js",

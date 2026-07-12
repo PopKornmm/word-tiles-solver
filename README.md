@@ -26,6 +26,7 @@ solver.fromRack('aetrs');
 
 solver.fromRack('aetr?');            // ? is a blank tile
 solver.fromRack('aetrs', { minLength: 4 });
+solver.fromRack('aetrs', { maxResults: 10 });   // top 10 by score
 
 solver.anagrams('listen');           // ['enlist', 'silent', 'tinsel', ...]
 solver.pattern('c??e');              // ['cafe', 'cage', 'cake', ...]
@@ -44,8 +45,9 @@ const solver = new WordSolver(['cat', 'act', 'tacocat']);
 
 - `new WordSolver(words)` builds the indexes once (about a second for the
   full ENABLE list on a normal machine). Reuse the instance.
-- `solver.fromRack(rack, { minLength })` returns `[{ word, score }]`, best
-  score first. Blanks (`?` in the rack) score 0; if a word is buildable both
+- `solver.fromRack(rack, { minLength, maxResults })` returns
+  `[{ word, score }]`, best score first. `maxResults` caps how many results
+  come back (default: all). Blanks (`?` in the rack) score 0; if a word is buildable both
   with and without a blank you get the better score.
 - `solver.anagrams(letters)` exact rearrangements only, input word excluded.
   Does not take blanks; go through `fromRack` and filter by length if you

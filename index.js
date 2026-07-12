@@ -55,11 +55,13 @@ class WordSolver {
   /**
    * Every word makeable from a rack of letters. Use ? for a blank tile.
    * Returns [{ word, score }] sorted by score desc, then alphabetically.
+   * Pass maxResults in opts to cap the returned list.
    * Blank tiles contribute 0 to the score; if a word can be made with or
    * without a blank, you get the better (real letters) score.
    */
   fromRack(rack, opts) {
     const minLength = (opts && opts.minLength) || 2;
+    const maxResults = (opts && opts.maxResults) || 0;
     const counts = Object.create(null);
     let blanks = 0;
     for (const ch of String(rack).toLowerCase()) {
@@ -91,7 +93,7 @@ class WordSolver {
     const out = [];
     for (const [word, score] of best) out.push({ word, score });
     out.sort((a, b) => (b.score - a.score) || (a.word < b.word ? -1 : 1));
-    return out;
+    return maxResults > 0 ? out.slice(0, maxResults) : out;
   }
 
   /**

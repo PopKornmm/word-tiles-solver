@@ -2,6 +2,12 @@
 
 Versions before 1.0.0 were internal, from before the public release.
 
+## 1.0.1
+
+- fromRack accepts a maxResults option to cap the returned list, handy
+  when you only want the top scoring words
+- added the homepage field to package.json (was missing from 1.0.0)
+
 ## 1.0.0
 
 - exact anagram lookup through a sorted-letter key map (the trie was the
