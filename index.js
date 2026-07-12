@@ -34,9 +34,11 @@ class WordSolver {
     // and uglier than a sorted-key lookup.
     this.byKey = new Map();
     this.byLen = new Map();
+    this.all = [];
 
     for (const w of words) {
       if (!/^[a-z]+$/.test(w) || w.length < 2) continue;
+      this.all.push(w);
       let node = this.root;
       for (const ch of w) {
         node = node.kids[ch] || (node.kids[ch] = { kids: Object.create(null), word: null });
@@ -123,6 +125,26 @@ class WordSolver {
         if (p[i] !== '?' && p[i] !== w[i]) { ok = false; break; }
       }
       if (ok) out.push(w);
+    }
+    return out;
+  }
+
+  /**
+   * Dictionary lookup by fragment. kind is 'starts', 'ends' or 'contains'
+   * (the default). Linear scan over the whole list, same deal as pattern():
+   * fine for interactive use, not for millions of calls in a loop.
+   */
+  lookup(fragment, opts) {
+    const kind = (opts && opts.kind) || 'contains';
+    const minLength = (opts && opts.minLength) || 2;
+    const s = String(fragment).toLowerCase().replace(/[^a-z]/g, '');
+    if (!s) return [];
+    const out = [];
+    for (const w of this.all) {
+      if (w.length < minLength) continue;
+      if (kind === 'starts' ? w.startsWith(s)
+        : kind === 'ends' ? w.endsWith(s)
+        : w.includes(s)) out.push(w);
     }
     return out;
   }

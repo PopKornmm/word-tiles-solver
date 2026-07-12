@@ -32,6 +32,10 @@ solver.anagrams('listen');           // ['enlist', 'silent', 'tinsel', ...]
 solver.pattern('c??e');              // ['cafe', 'cage', 'cake', ...]
 solver.has('quartz');                // true
 scoreWord('quartz');                 // 24
+
+solver.lookup('ight', { kind: 'ends' });        // ['alight', 'aright', ...]
+solver.lookup('zz');                            // substring by default
+solver.lookup('qu', { kind: 'starts', minLength: 5 });
 ```
 
 You can pass your own word list instead of the bundled one; anything that is
@@ -53,6 +57,9 @@ const solver = new WordSolver(['cat', 'act', 'tacocat']);
   Does not take blanks; go through `fromRack` and filter by length if you
   need that.
 - `solver.pattern(p)` fixed length, `?` matches any letter.
+- `solver.lookup(fragment, { kind, minLength })` dictionary search by
+  fragment: `kind` is `'starts'`, `'ends'` or `'contains'` (the default).
+  Linear scan, same performance profile as `pattern()`.
 - `solver.has(word)` exact membership.
 - `loadWordList()` the bundled ENABLE list as an array.
 - `scoreWord(word)` standard tile values.
@@ -69,12 +76,19 @@ const solver = new WordSolver(['cat', 'act', 'tacocat']);
 - The bundled list is ENABLE. It is public domain and solid for word games,
   but it is not the official list of any specific game, so a word being here
   does not guarantee a given game accepts it.
-- No TypeScript definitions yet.
 
 ## Demo
 
-A small browser demo lives in `demo/`. It embeds a standalone copy of the
-solver and loads the word list over fetch, so it runs on any static host.
+A browser demo lives in `demo/` and runs live at
+https://popkornmm.github.io/word-tiles-solver/demo/ with all four search
+modes, tile scoring and shareable searches (the query is encoded in the URL
+hash). It embeds a standalone copy of the solver and loads the word list
+over fetch, so it runs on any static host.
+
+## Tests and types
+
+`npm test` runs the suite with the built-in Node test runner (Node 18+).
+TypeScript definitions are bundled (`index.d.ts`), no @types package needed.
 
 ## License
 

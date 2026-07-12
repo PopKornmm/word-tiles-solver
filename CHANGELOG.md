@@ -2,6 +2,15 @@
 
 Versions before 1.0.0 were internal, from before the public release.
 
+## 1.1.0
+
+- new lookup(fragment, { kind, minLength }): dictionary search by prefix,
+  suffix or substring
+- bundled TypeScript definitions (index.d.ts)
+- real test suite: npm test now runs 10 tests through the Node test runner
+- redesigned browser demo: lookup mode, best play spotlight, results grouped
+  by length, shareable searches via the URL hash
+
 ## 1.0.1
 
 - fromRack accepts a maxResults option to cap the returned list, handy
