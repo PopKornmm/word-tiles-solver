@@ -3,95 +3,234 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Interactive demo of word-tiles-solver: every word buildable from a rack of letters, exact anagrams and pattern search over the ENABLE list.">
-<title>word-tiles-solver demo</title>
+<meta name="description" content="Interactive demo of word-tiles-solver: rack search with blank tiles, exact anagrams, pattern matching and dictionary lookup over the 172k-word ENABLE list, with tile scores.">
+<title>word-tiles-solver &middot; interactive demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareSourceCode",
+  "name": "word-tiles-solver",
+  "description": "Trie based word solver for tile games: rack search with blank tiles, exact anagrams, pattern matching and tile scores. No dependencies.",
+  "programmingLanguage": "JavaScript",
+  "runtimePlatform": "Node.js, browser",
+  "codeRepository": "https://github.com/PopKornmm/word-tiles-solver",
+  "license": "https://opensource.org/licenses/MIT",
+  "author": { "@type": "Person", "name": "Pop", "url": "https://www.solvingwordscapes.com/" }
+}
+</script>
 <style>
   :root{
-    --bg:#f6f4ee; --card:#fffdf7; --ink:#2a2620; --mut:#7a7264;
-    --line:#e4ddcd; --tile:#f3b64c; --tile-ink:#4a3413; --acc:#3d6b4f;
+    --felt:#182720; --felt-deep:#111c16;
+    --card:#20322a; --card-hi:#263c31; --line:#33483c; --line-soft:#2a3d32;
+    --ink:#ece5d2; --mut:#9fae9d; --faint:#77897b;
+    --tile:#e9c477; --tile-hi:#f6da9a; --tile-ink:#3c2c10; --tile-edge:#b98f42;
+    --brass:#cdb37a; --link:#a3d6b1; --ok:#8fce9c;
+    --shadow:0 10px 24px rgba(0,0,0,.35);
+    --r:12px;
   }
   *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
   body{
-    margin:0; font:16px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif;
-    background:var(--bg); color:var(--ink);
-    display:flex; flex-direction:column; min-height:100vh;
+    margin:0; color:var(--ink);
+    font:15px/1.55 "Inter", -apple-system, "Segoe UI", Roboto, sans-serif;
+    background:
+      radial-gradient(1200px 500px at 50% -100px, #22352b 0%, var(--felt) 55%, var(--felt-deep) 100%)
+      fixed var(--felt);
+    min-height:100vh; display:flex; flex-direction:column;
   }
-  header{
-    padding:26px 20px 6px; text-align:center;
-  }
-  header h1{ margin:0; font-size:26px; letter-spacing:-.01em; }
-  header p{ margin:6px 0 0; color:var(--mut); font-size:14px; }
-  header a{ color:var(--acc); }
-  main{ flex:1; width:100%; max-width:760px; margin:0 auto; padding:18px 20px 30px; }
+  a{ color:var(--link); text-decoration:none; }
+  a:hover{ text-decoration:underline; }
+  :focus-visible{ outline:2px solid var(--tile-hi); outline-offset:2px; border-radius:6px; }
 
-  .tabs{ display:flex; gap:8px; margin:0 0 14px; }
-  .tab{
-    cursor:pointer; border:1px solid var(--line); background:var(--card);
-    color:var(--mut); font-weight:700; font-size:14px; padding:8px 15px;
-    border-radius:999px;
+  header{ max-width:920px; width:100%; margin:0 auto; padding:40px 22px 8px; }
+  .eyebrow{
+    font:600 11px/1 "JetBrains Mono", monospace; letter-spacing:.18em;
+    text-transform:uppercase; color:var(--brass); margin:0 0 14px;
   }
-  .tab.on{ background:var(--acc); border-color:var(--acc); color:#fff; }
+  .eyebrow a{ color:var(--brass); border-bottom:1px dotted var(--brass); }
+  .eyebrow a:hover{ text-decoration:none; color:var(--tile-hi); border-color:var(--tile-hi); }
+  h1{
+    margin:0; font-family:"Fraunces", Georgia, serif; font-weight:650;
+    font-size:clamp(30px, 5vw, 44px); line-height:1.08; letter-spacing:-.015em;
+  }
+  .sub{ margin:12px 0 0; max-width:56ch; color:var(--mut); font-size:15px; }
+  .sub a{ font-weight:600; }
+  .install{
+    display:inline-flex; align-items:center; gap:10px; margin-top:16px;
+    background:var(--felt-deep); border:1px solid var(--line); border-radius:10px;
+    padding:8px 12px; font:600 13px "JetBrains Mono", monospace; color:var(--ink);
+  }
+  .install button{
+    border:0; background:var(--card-hi); color:var(--link); font:600 11px "Inter", sans-serif;
+    padding:5px 9px; border-radius:7px; cursor:pointer;
+  }
+  .install button:hover{ background:var(--line); }
+
+  main{ max-width:920px; width:100%; margin:0 auto; padding:22px 22px 40px; flex:1; }
+
+  .tabs{ display:flex; gap:6px; flex-wrap:wrap; margin:0 0 14px; }
+  .tab{
+    cursor:pointer; border:1px solid var(--line); background:transparent;
+    color:var(--mut); font:600 13.5px "Inter", sans-serif; padding:9px 16px;
+    border-radius:999px; transition:background .15s, color .15s;
+  }
+  .tab:hover{ color:var(--ink); background:var(--card); }
+  .tab.on{ background:var(--tile); border-color:var(--tile-edge); color:var(--tile-ink); }
 
   .panel{
-    background:var(--card); border:1px solid var(--line); border-radius:14px;
-    padding:16px; box-shadow:0 1px 3px rgba(0,0,0,.04);
+    background:var(--card); border:1px solid var(--line); border-radius:var(--r);
+    padding:18px; box-shadow:var(--shadow);
   }
   .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
   input[type=text]{
-    flex:1; min-width:180px; font-size:20px; letter-spacing:.12em;
-    padding:10px 14px; border:1px solid var(--line); border-radius:10px;
-    background:#fff; text-transform:lowercase;
+    flex:1; min-width:200px; font:500 20px/1 "JetBrains Mono", monospace;
+    letter-spacing:.14em; padding:12px 14px; color:var(--ink);
+    border:1px solid var(--line); border-radius:10px; background:var(--felt-deep);
+    text-transform:lowercase;
   }
+  input[type=text]::placeholder{ color:var(--faint); letter-spacing:.05em; font-size:15px; }
   select{
-    font-size:14px; padding:9px 10px; border:1px solid var(--line);
-    border-radius:10px; background:#fff; color:var(--ink);
+    font:500 13.5px "Inter", sans-serif; padding:10px 10px; color:var(--ink);
+    border:1px solid var(--line); border-radius:10px; background:var(--felt-deep);
   }
-  .hint{ margin:9px 2px 0; font-size:13px; color:var(--mut); }
-  .count{ margin:16px 2px 8px; font-size:13px; font-weight:700; color:var(--mut); }
+  .hint{ margin:10px 2px 0; font-size:13px; color:var(--mut); }
+  .examples{ margin:10px 0 0; display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+  .examples span{ font-size:12px; color:var(--faint); margin-right:2px; }
+  .chip{
+    cursor:pointer; border:1px solid var(--line-soft); background:transparent;
+    color:var(--link); font:600 12.5px "JetBrains Mono", monospace;
+    padding:4px 10px; border-radius:999px;
+  }
+  .chip:hover{ background:var(--card-hi); }
 
-  .words{ display:flex; flex-wrap:wrap; gap:8px; }
-  .w{
-    display:inline-flex; align-items:center; gap:6px;
-    background:var(--tile); color:var(--tile-ink);
-    border-radius:8px; padding:7px 10px; font-weight:800; font-size:16px;
-    letter-spacing:.06em; text-transform:uppercase;
-    box-shadow:inset 0 -2px 0 rgba(0,0,0,.15);
+  .stats{
+    display:flex; gap:20px; flex-wrap:wrap; margin:18px 4px 0;
+    font:600 12px "JetBrains Mono", monospace; color:var(--mut);
   }
-  .w small{ font-weight:700; font-size:11px; opacity:.75; }
-  .empty{ color:var(--mut); font-size:14px; margin:8px 2px; }
+  .stats b{ color:var(--ink); font-weight:600; }
+
+  /* Best play spotlight: the one loud element on the page */
+  .spot{
+    margin:18px 0 6px; padding:20px 18px 22px;
+    background:linear-gradient(180deg, var(--card-hi), var(--card));
+    border:1px solid var(--line); border-radius:var(--r);
+    display:none;
+  }
+  .spot.show{ display:block; }
+  .spot .label{
+    font:600 11px "JetBrains Mono", monospace; letter-spacing:.18em;
+    text-transform:uppercase; color:var(--brass); margin:0 0 14px;
+  }
+  .spot .tiles{ display:flex; gap:7px; flex-wrap:wrap; align-items:flex-end; }
+  .tile{
+    width:52px; height:56px; border-radius:9px; position:relative;
+    background:linear-gradient(180deg, var(--tile-hi), var(--tile));
+    color:var(--tile-ink); box-shadow:inset 0 -4px 0 rgba(0,0,0,.22), 0 3px 6px rgba(0,0,0,.3);
+    display:flex; align-items:center; justify-content:center;
+    font:650 26px "Fraunces", Georgia, serif; text-transform:uppercase;
+  }
+  .tile small{
+    position:absolute; right:5px; bottom:3px;
+    font:600 10px "JetBrains Mono", monospace; opacity:.8;
+  }
+  @keyframes drop{ from{ transform:translateY(-14px) rotate(-4deg); opacity:0; } to{ transform:none; opacity:1; } }
+  .spot.show .tile{ animation:drop .3s ease-out backwards; }
+  .spot.show .tile:nth-child(2){ animation-delay:.04s } .spot.show .tile:nth-child(3){ animation-delay:.08s }
+  .spot.show .tile:nth-child(4){ animation-delay:.12s } .spot.show .tile:nth-child(5){ animation-delay:.16s }
+  .spot.show .tile:nth-child(6){ animation-delay:.20s } .spot.show .tile:nth-child(7){ animation-delay:.24s }
+  .spot.show .tile:nth-child(8){ animation-delay:.28s } .spot.show .tile:nth-child(9){ animation-delay:.32s }
+  .spot .meta{
+    margin:14px 2px 0; font-size:13px; color:var(--mut);
+    display:flex; gap:14px; flex-wrap:wrap; align-items:center;
+  }
+  .spot .meta .pts{
+    font:600 13px "JetBrains Mono", monospace; color:var(--tile-hi);
+  }
+  @media (prefers-reduced-motion: reduce){
+    .spot.show .tile{ animation:none; }
+    html{ scroll-behavior:auto; }
+  }
+
+  .group{ margin:22px 0 0; }
+  .group h2{
+    margin:0 0 10px; font:600 12px "JetBrains Mono", monospace;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--faint);
+    border-bottom:1px solid var(--line-soft); padding-bottom:7px;
+  }
+  .words{ display:flex; flex-wrap:wrap; gap:7px; }
+  .w{
+    cursor:pointer; border:0; display:inline-flex; align-items:center; gap:7px;
+    background:linear-gradient(180deg, var(--tile-hi), var(--tile));
+    color:var(--tile-ink); border-radius:8px; padding:7px 10px;
+    font:700 15px "Inter", sans-serif; letter-spacing:.05em; text-transform:uppercase;
+    box-shadow:inset 0 -2px 0 rgba(0,0,0,.18);
+  }
+  .w:hover{ filter:brightness(1.05); }
+  .w small{ font:600 11px "JetBrains Mono", monospace; opacity:.75; }
+  .w .dict{
+    font:600 11px "Inter", sans-serif; color:var(--tile-ink); opacity:.55;
+    text-decoration:none; padding:0 1px;
+  }
+  .w .dict:hover{ opacity:1; text-decoration:none; }
+  .more{
+    margin:18px 0 0; cursor:pointer; border:1px solid var(--line);
+    background:transparent; color:var(--link); font:600 13.5px "Inter", sans-serif;
+    padding:10px 18px; border-radius:10px;
+  }
+  .more:hover{ background:var(--card); }
+  .empty{ color:var(--mut); font-size:14px; margin:14px 2px; }
+
+  #toast{
+    position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(8px);
+    background:var(--felt-deep); border:1px solid var(--line); color:var(--ok);
+    font:600 13px "Inter", sans-serif; padding:9px 16px; border-radius:10px;
+    opacity:0; pointer-events:none; transition:opacity .18s, transform .18s;
+  }
+  #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 
   footer{
-    padding:16px 20px 26px; text-align:center; font-size:13px; color:var(--mut);
+    max-width:920px; width:100%; margin:0 auto; padding:10px 22px 34px;
+    font-size:13px; color:var(--faint);
   }
-  footer a{ color:var(--acc); }
+  footer a{ color:var(--link); }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>word-tiles-solver</h1>
-  <p>
-    Trie word solver for tile games.
-    <a id="repo-link" href="#">GitHub</a>
-&middot; <a href="https://www.solvingwordscapes.com/" title="Wordscapes tools and stats">For production at solvingwordscapes.com</a>  </p>
+  <p class="eyebrow">npm &middot; word-tiles-solver &middot; <a id="repo-link" href="#">GitHub</a> &middot; <a href="https://www.solvingwordscapes.com/" title="Wordscapes tools and stats">used in production at solvingwordscapes.com</a></p>
+  <h1>Every word hiding in your rack.</h1>
+  <p class="sub">A dependency-free Trie solver for tile games: rack search with blank tiles, exact anagrams, pattern matching and dictionary lookup, with tile scores. Running live below on the full ENABLE word list, in your browser. Built by <a href="https://www.solvingwordscapes.com/">Pop at solvingwordscapes.com</a>.</p>
+  <span class="install"><span>npm i word-tiles-solver</span><button id="copy-install" type="button">Copy</button></span>
 </header>
 
 <main>
-  <div class="tabs">
-    <button class="tab on" data-mode="rack">Rack</button>
-    <button class="tab" data-mode="anagram">Anagrams</button>
-    <button class="tab" data-mode="pattern">Pattern</button>
+  <div class="tabs" role="tablist" aria-label="Search mode">
+    <button class="tab on" data-mode="rack" role="tab">Rack</button>
+    <button class="tab" data-mode="anagram" role="tab">Anagrams</button>
+    <button class="tab" data-mode="pattern" role="tab">Pattern</button>
+    <button class="tab" data-mode="lookup" role="tab">Lookup</button>
   </div>
 
   <div class="panel">
     <div class="row">
       <input id="entry" type="text" autocomplete="off" spellcheck="false"
-             placeholder="letters, ? for blank" value="aetrs">
+             placeholder="letters, ? for blank" value="aetrs?">
+      <select id="lookup-kind" style="display:none">
+        <option value="starts" selected>starts with</option>
+        <option value="ends">ends with</option>
+        <option value="contains">contains</option>
+      </select>
       <select id="minlen">
         <option value="2">2+ letters</option>
         <option value="3" selected>3+ letters</option>
         <option value="4">4+ letters</option>
         <option value="5">5+ letters</option>
+        <option value="6">6+ letters</option>
+        <option value="7">7+ letters</option>
       </select>
       <select id="sort">
         <option value="score" selected>by score</option>
@@ -100,15 +239,25 @@
       </select>
     </div>
     <p class="hint" id="hint">Loading the word list...</p>
-    <p class="count" id="count"></p>
-    <div class="words" id="output"></div>
+    <div class="examples" id="examples"></div>
+    <div class="stats" id="stats"></div>
   </div>
+
+  <section class="spot" id="spot" aria-live="polite">
+    <p class="label">Best play</p>
+    <div class="tiles" id="spot-tiles"></div>
+    <p class="meta"><span class="pts" id="spot-pts"></span><a id="spot-dict" href="#" target="_blank" rel="noopener">definition on Wiktionary</a></p>
+  </section>
+
+  <div id="results"></div>
 </main>
 
 <footer>
-  MIT licensed. Word list: ENABLE (public domain).
-Built by <a href="https://www.solvingwordscapes.com/">Pop @ solvingwordscapes.com</a>.
+  MIT licensed. Word list: ENABLE (public domain). Scores follow standard English tile values, blanks score 0.
+  Built by <a href="https://www.solvingwordscapes.com/">Pop @ solvingwordscapes.com</a>.
 </footer>
+
+<div id="toast" role="status">Copied</div>
 
 <script>
 'use strict';
@@ -122,8 +271,10 @@ class WordSolver {
     this.root = { kids:Object.create(null), word:null };
     this.byKey = new Map();
     this.byLen = new Map();
+    this.all = [];
     for (const w of words){
       if (!/^[a-z]+$/.test(w) || w.length < 2) continue;
+      this.all.push(w);
       let n = this.root;
       for (const ch of w) n = n.kids[ch] || (n.kids[ch] = { kids:Object.create(null), word:null });
       n.word = w;
@@ -174,53 +325,155 @@ class WordSolver {
     }
     return out;
   }
+  lookup(q, kind, minLength){
+    const s = String(q).toLowerCase().replace(/[^a-z]/g,'');
+    if (!s) return [];
+    const out = [];
+    for (const w of this.all){
+      if (w.length < minLength) continue;
+      if (kind === 'starts' ? w.startsWith(s) : kind === 'ends' ? w.endsWith(s) : w.includes(s)) out.push(w);
+    }
+    return out;
+  }
 }
 
 const $ = id => document.getElementById(id);
 let solver = null;
 let mode = 'rack';
+let shown = 0;          // how many results are rendered
+let current = [];       // full current result set
+const PAGE = 240;
 
 const COPY = {
-  rack:    { ph:'letters, ? for blank', hint:'Every word buildable from your rack. Use ? for a blank tile (blanks score 0).' },
-  anagram: { ph:'a full word or letters', hint:'Exact rearrangements only: same letters, same counts.' },
-  pattern: { ph:'pattern like c??e',      hint:'Fixed length, ? matches any letter.' }
+  rack:    { ph:'letters, ? for blank', hint:'Every word buildable from your rack. Use ? for a blank tile (blanks score 0).', ex:['aetrs?','retains','qizjax'] },
+  anagram: { ph:'a full word or letters', hint:'Exact rearrangements only: same letters, same counts.', ex:['listen','elvis','dearth'] },
+  pattern: { ph:'pattern like c??e', hint:'Fixed length, ? matches any letter.', ex:['c??e','?igh?','q???z'] },
+  lookup:  { ph:'a fragment like ight', hint:'Search the whole dictionary by prefix, suffix or substring.', ex:['ight','zz','ova'] }
 };
 
-function render(items){
-  const out = $('output');
-  if (!items.length){
-    out.innerHTML = '<p class="empty">Nothing found.</p>';
-    $('count').textContent = '';
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._h); toast._h = setTimeout(() => t.classList.remove('show'), 1400);
+}
+function copyText(s, msg){
+  navigator.clipboard && navigator.clipboard.writeText(s).then(() => toast(msg || 'Copied'));
+}
+
+function renderSpot(items){
+  const spot = $('spot');
+  if (!items.length){ spot.classList.remove('show'); return; }
+  let top = items[0];
+  for (const it of items) if (it.score > top.score) top = it;
+  $('spot-tiles').innerHTML = top.word.split('').map(ch =>
+    '<div class="tile">' + ch + '<small>' + (SCORES[ch]||0) + '</small></div>'
+  ).join('');
+  $('spot-pts').textContent = top.score + ' points, ' + top.word.length + ' letters';
+  $('spot-dict').href = 'https://en.wiktionary.org/wiki/' + top.word;
+  spot.classList.remove('show'); void spot.offsetWidth; spot.classList.add('show');
+}
+
+function wordChip(it){
+  return '<button class="w" data-word="' + it.word + '" title="Click to copy">' + it.word +
+         ' <small>' + it.score + '</small>' +
+         '<a class="dict" href="https://en.wiktionary.org/wiki/' + it.word +
+         '" target="_blank" rel="noopener" title="Wiktionary" aria-label="Definition of ' + it.word + '">&#8599;</a></button>';
+}
+
+function renderResults(){
+  const box = $('results');
+  if (!current.length){
+    box.innerHTML = '<p class="empty">Nothing found. Try one of the examples above.</p>';
     return;
   }
-  $('count').textContent = items.length + (items.length === 1 ? ' word' : ' words');
-  const cap = items.slice(0, 400);
-  out.innerHTML = cap.map(it =>
-    '<span class="w">' + it.word + ' <small>' + it.score + '</small></span>'
-  ).join('');
-  if (items.length > cap.length){
-    out.innerHTML += '<p class="empty">Showing the first 400.</p>';
+  const slice = current.slice(0, shown);
+  // group by length, longest first
+  const groups = new Map();
+  for (const it of slice){
+    const g = groups.get(it.word.length); if (g) g.push(it); else groups.set(it.word.length, [it]);
   }
+  const lens = [...groups.keys()].sort((a,b) => b-a);
+  const totalByLen = new Map();
+  for (const it of current){
+    totalByLen.set(it.word.length, (totalByLen.get(it.word.length)||0) + 1);
+  }
+  let html = '';
+  for (const L of lens){
+    const g = groups.get(L);
+    const total = totalByLen.get(L);
+    html += '<section class="group"><h2>' + L + ' letters &middot; ' + total +
+            (total === 1 ? ' word' : ' words') + '</h2><div class="words">' +
+            g.map(wordChip).join('') + '</div></section>';
+  }
+  if (shown < current.length){
+    html += '<button class="more" id="more">Show ' + Math.min(PAGE, current.length - shown) +
+            ' more of ' + (current.length - shown) + '</button>';
+  }
+  box.innerHTML = html;
+  const more = $('more');
+  if (more) more.addEventListener('click', () => { shown += PAGE; renderResults(); });
+}
+
+function renderStats(n, ms){
+  const dict = solver ? solver.all.length.toLocaleString('en-US') : '...';
+  $('stats').innerHTML =
+    '<span><b>' + n.toLocaleString('en-US') + '</b> ' + (n === 1 ? 'word' : 'words') + '</span>' +
+    '<span>search <b>' + ms + ' ms</b></span>' +
+    '<span>dictionary <b>' + dict + '</b> words (ENABLE)</span>';
+}
+
+function renderExamples(){
+  $('examples').innerHTML = '<span>Try:</span>' + COPY[mode].ex.map(e =>
+    '<button class="chip" data-ex="' + e + '">' + e + '</button>').join('');
+}
+
+function updateHash(){
+  const p = new URLSearchParams({ m:mode, q:$('entry').value.trim(),
+    min:$('minlen').value, sort:$('sort').value });
+  if (mode === 'lookup') p.set('k', $('lookup-kind').value);
+  history.replaceState(null, '', '#' + p.toString());
+}
+function readHash(){
+  if (!location.hash) return;
+  try{
+    const p = new URLSearchParams(location.hash.slice(1));
+    const m = p.get('m');
+    if (m && COPY[m]) mode = m;
+    if (p.get('q') !== null) $('entry').value = p.get('q');
+    if (p.get('min')) $('minlen').value = p.get('min');
+    if (p.get('sort')) $('sort').value = p.get('sort');
+    if (p.get('k')) $('lookup-kind').value = p.get('k');
+  } catch(e){ /* ignore malformed hashes */ }
 }
 
 function solve(){
   if (!solver) return;
   const q = $('entry').value.trim();
-  if (!q){ render([]); return; }
   const minLength = parseInt($('minlen').value, 10);
+  const t0 = performance.now();
   let items = [];
-  if (mode === 'rack'){
-    items = solver.fromRack(q, { minLength });
-  } else if (mode === 'anagram'){
-    items = solver.anagrams(q).map(w => ({ word:w, score:scoreWord(w) }));
-  } else {
-    items = solver.pattern(q).filter(w => w.length >= minLength)
-                  .map(w => ({ word:w, score:scoreWord(w) }));
+  if (q){
+    if (mode === 'rack'){
+      items = solver.fromRack(q, { minLength });
+    } else if (mode === 'anagram'){
+      items = solver.anagrams(q).map(w => ({ word:w, score:scoreWord(w) }));
+    } else if (mode === 'pattern'){
+      items = solver.pattern(q).filter(w => w.length >= minLength)
+                    .map(w => ({ word:w, score:scoreWord(w) }));
+    } else {
+      items = solver.lookup(q, $('lookup-kind').value, minLength)
+                    .map(w => ({ word:w, score:scoreWord(w) }));
+    }
   }
+  const ms = Math.max(1, Math.round(performance.now() - t0));
   const s = $('sort').value;
-  if (s === 'len') items.sort((a,b) => (b.word.length - a.word.length) || (a.word < b.word ? -1 : 1));
+  if (s === 'score') items.sort((a,b) => (b.score - a.score) || (a.word < b.word ? -1 : 1));
+  if (s === 'len')   items.sort((a,b) => (b.word.length - a.word.length) || (a.word < b.word ? -1 : 1));
   if (s === 'alpha') items.sort((a,b) => a.word < b.word ? -1 : 1);
-  render(items);
+  current = items; shown = PAGE;
+  renderStats(items.length, ms);
+  renderSpot(items);
+  renderResults();
+  updateHash();
 }
 
 function setMode(m){
@@ -229,12 +482,29 @@ function setMode(m){
   $('entry').placeholder = COPY[m].ph;
   $('hint').textContent = COPY[m].hint;
   $('minlen').style.display = (m === 'anagram') ? 'none' : '';
+  $('lookup-kind').style.display = (m === 'lookup') ? '' : 'none';
+  renderExamples();
   solve();
 }
 
 document.querySelectorAll('.tab').forEach(t =>
   t.addEventListener('click', () => setMode(t.dataset.mode)));
-['entry','sort','minlen'].forEach(id => $(id).addEventListener('input', solve));
+
+let deb = null;
+$('entry').addEventListener('input', () => { clearTimeout(deb); deb = setTimeout(solve, 70); });
+['sort','minlen','lookup-kind'].forEach(id => $(id).addEventListener('input', solve));
+
+$('examples').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  $('entry').value = b.dataset.ex; solve(); $('entry').focus();
+});
+$('results').addEventListener('click', e => {
+  if (e.target.closest('.dict')) return; // let the Wiktionary link work
+  const w = e.target.closest('.w'); if (!w) return;
+  copyText(w.dataset.word, w.dataset.word.toUpperCase() + ' copied');
+});
+$('copy-install').addEventListener('click', () =>
+  copyText('npm i word-tiles-solver', 'Install command copied'));
 
 // Point the GitHub link at this repo when served from Pages.
 (function(){
@@ -245,11 +515,17 @@ document.querySelectorAll('.tab').forEach(t =>
     const repo = location.pathname.split('/').filter(Boolean)[0] || 'word-tiles-solver';
     link.href = 'https://github.com/' + user + '/' + repo;
   } else {
-    link.href = 'https://github.com/';
+    link.href = 'https://github.com/PopKornmm/word-tiles-solver';
   }
 })();
 
 (async function init(){
+  readHash();
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.mode === mode));
+  $('entry').placeholder = COPY[mode].ph;
+  $('minlen').style.display = (mode === 'anagram') ? 'none' : '';
+  $('lookup-kind').style.display = (mode === 'lookup') ? '' : 'none';
+  renderExamples();
   try {
     const res = await fetch('../words.txt');
     if (!res.ok) throw new Error('Could not load the word list (' + res.status + ').');
@@ -258,7 +534,7 @@ document.querySelectorAll('.tab').forEach(t =>
     $('hint').textContent = COPY[mode].hint;
     solve();
   } catch (e){
-    $('output').innerHTML = '<p class="empty">' + e.message + '</p>';
+    $('results').innerHTML = '<p class="empty">' + e.message + '</p>';
     $('hint').textContent = 'The demo needs words.txt one folder up (works on GitHub Pages out of the box).';
   }
 })();
